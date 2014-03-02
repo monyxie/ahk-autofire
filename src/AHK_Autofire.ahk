@@ -15,10 +15,16 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 IniFile := "Settings.ini"
 ;AhkExe := "地下城与勇士"
 
-IsOn := 0
+; 默认设定
 ToggleKey := "Alt"
 Interval := 20
 Keys := "x"
+AutoClickEnabled := 0
+ToggleAutoClickKey := "Ctrl"
+AutoClickInterval := 20
+
+IsOn := 0
+IsAutoClickOn := 0
 
 ; 若未存在配置文件则创建
 IfNotExist, %IniFile%
@@ -39,9 +45,12 @@ return
 ReadSettings:
 IfExist, %IniFile%
 {
-    IniRead, ToggleKey, %IniFile%, Settings, ToggleKey
-    IniRead, Interval, %IniFile%, Settings, Interval
-    IniRead, Keys, %IniFile%, Settings, Keys
+    IniRead, ToggleKey, %IniFile%, Settings, ToggleKey, %ToggleKey%
+    IniRead, Interval, %IniFile%, Settings, Interval, %Interval%
+    IniRead, Keys, %IniFile%, Settings, Keys, %Keys%
+    IniRead, AutoClickEnabled, %IniFile%, Settings, AutoClickEnabled, %AutoClickEnabled%
+    IniRead, ToggleAutoClickKey, %IniFile%, Settings, ToggleAutoClickKey, %ToggleAutoClickKey%
+    IniRead, AutoClickInterval, %IniFile%, Settings, AutoClickInterval, %AutoClickInterval%
 }
 Return
 
@@ -50,6 +59,9 @@ SaveSettings:
     IniWrite, %ToggleKey%, %IniFile%, Settings, ToggleKey
     IniWrite, %Interval%, %IniFile%, Settings, Interval
     IniWrite, %Keys%, %IniFile%, Settings, Keys
+    IniWrite, %AutoClickEnabled%, %IniFile%, Settings, AutoClickEnabled
+    IniWrite, %ToggleAutoClickKey%, %IniFile%, Settings, ToggleAutoClickKey
+    IniWrite, %AutoClickInterval%, %IniFile%, Settings, AutoClickInterval
 Return
 
 ; 开启/关闭
@@ -73,8 +85,8 @@ If ((A_PriorHotkey = A_ThisHotkey) AND (A_TimeSincePriorHotkey < 300))
             Hotkey, $%A_LoopField%, , On
           }
           IsOn := 1
-            StringReplace, Keys4Display, Keys, |, %A_Space%, All
-            StringUpper, Keys4Display, Keys4Display
+          StringReplace, Keys4Display, Keys, |, %A_Space%, All
+          StringUpper, Keys4Display, Keys4Display
           ;TrayTip, AHK连发器, 连发已开启。`n连发键：%Keys4Display%, 1
           ShowToolTip(Keys4Display . "键连发已开启")
     }
@@ -87,7 +99,10 @@ Loop, Parse, Keys, |
 {
     Hotkey, $%A_LoopField%, Autofire, Off
 }
+Hotkey, MButton, AutoClick, Off
 Hotkey, %ToggleKey%, ToggleOnOff
+If (AutoClickEnabled)
+    Hotkey, %ToggleAutoClickKey%, ToggleAutoClickOnOff
 Return
 
 Autofire:
@@ -96,10 +111,10 @@ Loop
 {
     If Not GetKeyState(KeyName, "P")
         Break
-        Send {%KeyName% Down}
-    Sleep 20
-        Send {%KeyName% Up}
-    Sleep 20
+    Send {%KeyName% Down}
+    Sleep %Interval%
+    Send {%KeyName% Up}
+    Sleep %Interval%
 }
 Return
 
@@ -120,3 +135,36 @@ RemoveToolTip:
 SetTimer, RemoveToolTip, Off
 ToolTip
 Return
+
+ToggleAutoClickOnOff:
+If ((A_PriorHotkey = A_ThisHotkey) AND (A_TimeSincePriorHotkey < 300))
+{
+    If (IsAutoClickOn)
+    {
+          Hotkey, MButton, , Off
+          IsAutoClickOn := 0
+          ShowToolTip("鼠标连发已关闭")
+    }
+    Else
+    {
+          Hotkey, MButton, , On
+          IsAutoClickOn := 1
+          ShowToolTip("鼠标中键连发已开启")
+    }
+}
+Return
+
+
+; 鼠标连击
+AutoClick:
+Loop
+{
+    If Not GetKeyState("MButton", "P")
+        Break
+    Send {LButton Down}
+    Sleep %AutoClickInterval%
+    Send {LButton Up}
+    Sleep %AutoClickInterval%
+}
+Return
+
